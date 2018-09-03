@@ -286,7 +286,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *     </tr>
  *
  *     <tr>
- *         <td><code>{@link #onWindowVisibilityChanged(int)}</code></td>
+ *         <td><code>{@link # (int)}</code></td>
  *         <td>Called when the visibility of the window containing the view
  *         has changed.
  *         </td>

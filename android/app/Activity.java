@@ -129,6 +129,13 @@ import java.util.HashMap;
 import java.util.List;
 
 /**
+
+ actiivtiy是一个单独的、有焦点的可以供使用者操作的。几乎所有的activity与使用者都有交互，
+ 所以activity类负责为你创建一个窗口，你可以使用setContentView方法在其中放置UI。
+ 当activity经常以全屏的窗口显示给用户的时候，也可以使用其他的方法来代替activity：例如
+ 悬浮窗口（使用一个主题android.R.attr#windowIsFloating），或者嵌入别的activity（
+ 使用ActivityGroup（不建议，建议使用Fragment））
+
  * An activity is a single, focused thing that the user can do.  Almost all
  * activities interact with the user, so the Activity class takes care of
  * creating a window for you in which you can place your UI with
@@ -136,22 +143,30 @@ import java.util.List;
  * as full-screen windows, they can also be used in other ways: as floating
  * windows (via a theme with {@link android.R.attr#windowIsFloating} set)
  * or embedded inside of another activity (using {@link ActivityGroup}).
- *
+ 
+ 
+ * 这里是两个几乎所有activity的子类都会去实现的方法
  * There are two methods almost all subclasses of Activity will implement:
  *
  * <ul>
+		oncreate 是你初始化activity的地方，最重要的是，在这里你会经常调用setContentView
+		方法将一个layout资源定义为UI，然后使用findViewById的方法去读取UI中你需要交互的控件，
  *     <li> {@link #onCreate} is where you initialize your activity.  Most
  *     importantly, here you will usually call {@link #setContentView(int)}
  *     with a layout resource defining your UI, and using {@link #findViewById}
  *     to retrieve the widgets in that UI that you need to interact with
  *     programmatically.
  *
+		onPause 方法是你处理用户离开你的activity，中药的是，使用者所做的所有数据改变应该这
+		里被提交（通常是提交给ContentProvider）保存数据
  *     <li> {@link #onPause} is where you deal with the user leaving your
  *     activity.  Most importantly, any changes made by the user should at this
  *     point be committed (usually to the
  *     {@link android.content.ContentProvider} holding the data).
  * </ul>
  *
+	为了能使用startActivity方法，所有的activity类在AndroidManifest.xml文件中都必须有一个
+	对应的注册，在包中进行声明
  * <p>To be of use with {@link android.content.Context#startActivity Context.startActivity()}, all
  * activity classes must have a corresponding
  * {@link android.R.styleable#AndroidManifestActivity &lt;activity&gt;}
@@ -170,6 +185,8 @@ import java.util.List;
  *
  * <div class="special reference">
  * <h3>Developer Guides</h3>
+	activity类在一个应用的整个生命周期内是一个重要部分，activity启动和组合的方式是平台应用模型的基础部分
+	详细介绍Android应用程序的结构以及活动的行为
  * <p>The Activity class is an important part of an application's overall lifecycle,
  * and the way activities are launched and put together is a fundamental
  * part of the platform's application model. For a detailed perspective on the structure of an
@@ -185,7 +202,8 @@ import java.util.List;
  *
  * <a name="Fragments"></a>
  * <h3>Fragments</h3>
- *
+ *	从android3.0开始加入，活动实现可以使用Fragment类来更好地对代码进行模块化，
+	为更大的屏幕构建更复杂的用户界面，并帮助在小屏幕和大屏幕之间缩放应用程序
  * <p>Starting with {@link android.os.Build.VERSION_CODES#HONEYCOMB}, Activity
  * implementations can make use of the {@link Fragment} class to better
  * modularize their code, build more sophisticated user interfaces for larger
@@ -193,7 +211,8 @@ import java.util.List;
  *
  * <a name="ActivityLifecycle"></a>
  * <h3>Activity Lifecycle</h3>
- *
+ *	activitys在系统中被活动栈管理，当一个新的activity启动，它会占据栈顶并且变为启动的activity，
+	之前的activity在活动栈中一直残存在它下面，当新的activity存在的时候，原来的activity不会回到前台
  * <p>Activities in the system are managed as an <em>activity stack</em>.
  * When a new activity is started, it is placed on the top of the stack
  * and becomes the running activity -- the previous activity always remains
@@ -202,6 +221,17 @@ import java.util.List;
  *
  * <p>An activity has essentially four states:</p>
  * <ul>
+		当一个activity在页面的前端（在栈顶），它是活动的
+		
+		当一个activity失去了焦点，但是仍然可见（比如 一个新的非全屏的或者透明的activity获取了焦点，
+		并且在当前activity上面），原来的activity会执行 onpause方法，一个暂停的activity依然完全活着
+		（它维持着所有状态和成员信息，并且仍然绑定着窗口管理），但是可以被系统在极端底内存的情况下杀死
+		
+		当一个activity完全被另一个activity遮盖，它就是停止状态，它不再被用户可见，所以它的窗口是隐藏的，
+		它可能经常会被系统在需要内存的时候被杀掉
+		
+		当一个activity处于暂停活着停止的时候，系统可以把activity从内存中删除，或者要求它结束，或者
+		简单的杀死它的进程。当它再次显示给用户时，必须完全重新启动并恢复到其以前的状态。
  *     <li> If an activity is in the foreground of the screen (at the top of
  *         the stack),
  *         it is <em>active</em> or  <em>running</em>. </li>
@@ -232,7 +262,21 @@ import java.util.List;
  *
  * <p>There are three key loops you may be interested in monitoring within your
  * activity:
- *
+ *	这里是3个关键点，你在监控activity的时候或许会很感兴趣
+	1、activity的整个生命周期，从第一次调用oncreate方法开始，到最终调用ondestory为止。
+		activity应该在oncreate方法中做所有的初始化的设置，并在ondestory方法中释放剩下的资源
+		例如，有一个在后台运行的负责联网下载数据的线程，线程可能应该在oncreate方法中创建，在
+		ondestory方法中销毁
+	2、activity可视生命周期在调用了onstart方法，直到有个相应的onstop方法被调用。
+		在此期间，用户可以看到activity在屏幕前方，也许activity还不能与用户进行交互或者不在前台。
+		在这两种方法之间，您可以维护向用户显示活动所需的资源，例如，你可以在onstart方法中注册一个
+		BroadcastReceiver去监控那些引起UI变化的改变，并在用户不再看到这个页面显示的时候，在
+		onstop方法中注销。activity在显示和隐藏之间变换的时候，onstart和onstop方法可以被多次调用
+	3、activity前台生命周期在调用了onResume方法，直到有个相应的onPause方法被调用。
+		在此期间这个activity处在所有activity的最前方，而且可以和用户产生交互
+		activity可以频繁的在resumed和paused两种状态之间切换，
+		例如，当设备休眠、当activity有结果返回、当有新的意图被发送，所以这两个方法中的代码应该轻量
+		
  * <ul>
  * <li>The <b>entire lifetime</b> of an activity happens between the first call
  * to {@link android.app.Activity#onCreate} through to a single final call
@@ -264,6 +308,12 @@ import java.util.List;
  * lightweight.
  * </ul>
  *
+ 
+	整个activity的生命周期被如下的方法被定义。所有的方法都是个钩子，当activity状态更改的时候，
+	你可以重写这些方法去做一些适合的工作。所有的activity都应该实现oncreate方法去做初始化的设置，
+	也许还要实现opause方法去提交数据的更改，另外准备去停止与用户的交互。
+	你实现这些方法的时候需要回调父类的相关方法。
+ 
  * <p>The entire lifecycle of an activity is defined by the following
  * Activity methods.  All of these are hooks that you can override
  * to do appropriate work when the activity changes state.  All
@@ -276,18 +326,34 @@ import java.util.List;
  * </p>
  * <pre class="prettyprint">
  * public class Activity extends ApplicationContext {
+		当activity第一次被创建的时候才会回调，这里你应该做所有的常规的初始化操作，
+		创建view、绑定数据。
+		这个方法还为你提供了一个包含活动先前冻结状态的包，如果有一个。
+		后面跟着会执行onstart方法
  *     protected void onCreate(Bundle savedInstanceState);
- *
+		当activity经历了onstop方法后，又被重新唤起的时候回调
+		后面跟着会执行onstart方法
  *     protected void onStart();
- *
+		当activity被用户可见的时候回调
+		如果activity变为前台运行时，会执行onresume
+		如果activity回到隐藏状态，会跟着执行onstop
  *     protected void onRestart();
- *
+		当activity可以开始与用户进行交互的时候回调，这时候
+		activity处于活动栈顶，用户可以进行输入操作
  *     protected void onResume();
- *
+		当系统要开始恢复以前的activity时调用，
+		这通常用于提交未保存的更改。持久数据、停止动画和其他可能消耗CPU的操作
+		这个方法的调用一定要快，因为下一个activity只有在这个方法有返回的时候才会调用onresume方法
+		如果activity恢复前台运行，跟着会调用onresume
+		如果activity不再被用户可见，跟着会调用onstop
  *     protected void onPause();
- *
+		当用户不再可见该activity活动时调用，因为另一个activity已经恢复并覆盖了该activity。
+		这可能是因为一个新的activity正在启动，一个现有的活动正处于这个前面，或者这一个正在被销毁。
+		如果activity恢复启动，跟着会调用onrestart
+		如果activity被销毁，跟着会调用ondestory
  *     protected void onStop();
- *
+		在activity被finish或者是系统在需要节省空间的时候销毁了actvitiy的实例的时候被调用，
+		在活动被销毁前，你能接收到的最后一个回调，你可以用isFinishing方法来判断它的状态。
  *     protected void onDestroy();
  * }
  * </pre>
@@ -672,6 +738,13 @@ import java.util.List;
  * knows it needs to keep your process around.
  * </ol>
  *
+	 有时，活动可能需要做一个独立于活动生命周期本身的长时间运行的操作。
+	 一个例子可能是允许你上传图片到一个网站的相机应用程序。
+	 上传可能需要很长时间，并且应用程序应该允许用户在执行时离开应用程序。
+	 要实现这一点，您的活动应该启动一个服务，在该服务中进行上传。
+	 这允许系统在上传期间适当地优先考虑进程（考虑到它比其他不可见的应用程序更重要），
+	 而独立于原始活动是否暂停、停止或完成。
+ 
  * <p>Sometimes an Activity may need to do a long-running operation that exists
  * independently of the activity lifecycle itself.  An example may be a camera
  * application that allows you to upload a picture to a web site.  The upload
